@@ -1,0 +1,1010 @@
+---
+title: "SA.Project"
+author: "Molly McCann"
+date: "2024-11-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(StatsBombR)
+library(dplyr)
+library(SBpitch)
+library(grid)
+library(ineq)
+library(Gini)
+library(ggplot2) 
+library(ggdark) 
+library(ggsoccer) 
+library(xgboost) 
+library(fastDummies) 
+library(xgboost) 
+library(reshape) 
+library(purrr)
+library(reshape2)
+```
+
+```{r}
+comp <- FreeCompetitions() |>
+filter(competition_id==37 & season_name=="2019/2020")
+
+matches <- FreeMatches(comp)
+
+statsBombData <- free_allevents(MatchesDF = matches, Parallel = T)
+
+statsBombData = allclean(statsBombData)
+```
+
+```{r}
+unique(statsBombData$shot.technique.name)
+unique(statsBombData$pass.technique.name)
+unique(statsBombData$team.name)
+unique(statsBombData$tactics.formation)
+```
+
+## Match IDs for Chelsea FCW
+```{r}
+chelseaMatches <- matches |>
+  filter(home_team.home_team_name == "Chelsea FCW" | away_team.away_team_name == "Chelsea FCW")
+
+unique(chelseaMatches$match_id)
+```
+
+## Selecting Chelsea FCW match data 
+```{r}
+chelseaAttackData <- statsBombData |>
+  filter(match_id %in% c(2275154, 2275105, 2275063, 2275072, 2275057, 
+                         2275045, 2275093, 2275084, 2275052, 2275080, 
+                         2275090, 2275108, 2275132, 2275130, 2275074))
+```
+
+## Add column with stadium.id to chelseaAttackData
+```{r}
+# Ensure chelseaAttackData has a column named 'stadium.id' by joining with chelseaMatches on 'match_id'
+chelseaAttackData <- chelseaAttackData |>
+  left_join(chelseaMatches |> 
+              select(match_id, stadium.id), by = "match_id")
+
+```
+
+## Player names for Chelsea FCW
+```{r}
+chelseaPlayerData <- chelseaAttackData |>
+  filter(team.name == "Chelsea FCW")
+
+chelseaNames <- na.omit(unique(chelseaPlayerData$player.name))
+print(chelseaNames)
+```
+
+## Millie Bright's defensive passes from the box
+
+Boiler plate code produced by StatsBomb
+
+```{r}
+# Finding the player.id associated with Millie Bright (defender)
+brightID <- chelseaAttackData |>
+  filter(player.name == "Millie Bright") |>
+  pull(player.id)
+
+# Creating the visualization
+brightPass <- chelseaAttackData |>
+  filter(type.name == "Pass" & is.na(pass.outcome.name) & player.id == brightID) |>
+  filter(location.x <= 18 & location.y <= 62 & location.y >= 18) |>
+  filter(pass.end_location.x > 18 | pass.end_location.y > 62 | pass.end_location.y < 18)
+
+create_Pitch(grass_colour = "#538032", 
+             line_colour =  "#ffffff", 
+             background_colour = "#538032", 
+             goal_colour = "#000000") + 
+  geom_segment(data = brightPass, aes(x = location.x, y = location.y,
+                                    xend = pass.end_location.x, yend = pass.end_location.y), 
+               lineend = "round", size = 0.5, color = "#ffffff", 
+               arrow = arrow(length = unit(0.07, "inches"), ends = "last", type = "open")) +
+  labs(title = "Millie Bright, Completed Box Clearance/Pass", subtitle = "WSL, 2019-20") + 
+  scale_y_reverse() + 
+  coord_fixed(ratio = 105/100)
+```
+
+As a right center back, Millie Bright frequently passes to her fullbacks or wingers on the right side of the field. Her passes are very routine and systematic, which is a good trait of a dependable center back. Unlike attacking players who rely on creativity when the ball is at their feet, Millie is able to make safe and quality passes to advance Chelsea's play up the field. 
+
+## Sam Kerr's attacking passes into the box 
+
+Boiler plate code produced by StatsBomb
+
+```{r}
+# Finding the player.id associated with Sam Kerr (forward)
+kerrID <- chelseaAttackData |>
+  filter(player.name == "Samantha May Kerr") |>
+  pull(player.id)
+
+# Creating the visualization
+kerrPass <- chelseaAttackData |>
+  filter(type.name == "Pass" & is.na(pass.outcome.name) & player.id == kerrID) |>
+  filter(pass.end_location.x >= 102 & pass.end_location.y <= 62 & pass.end_location.y >= 18)
+
+
+create_Pitch(grass_colour = "#538032", 
+             line_colour =  "#ffffff", 
+             background_colour = "#538032", 
+             goal_colour = "#000000") + 
+  geom_segment(data = kerrPass, aes(x = location.x, y = location.y,
+                                    xend = pass.end_location.x, yend = pass.end_location.y), 
+               lineend = "round", size = 0.5, color = "#ffffff", 
+               arrow = arrow(length = unit(0.07, "inches"), ends = "last", type = "open")) +
+  labs(title = "Sam Kerr, Completed Box Passes", subtitle = "WSL, 2019-20") + 
+  scale_y_reverse() + 
+  coord_fixed(ratio = 105/100)
+```
+
+This visualization shows the creative nature of Sam Kerr when she is attacking. Rather than a systematic series of passes seen in defenders, Sam Kerr's passes into the box vary and come from both the right and left sides of the field. This shows that she is comfortable with the movement neccessary for forwards to have when attacking. 
+
+## Bethany England's attacking passes into the box 
+
+Boiler plate code produced by StatsBomb
+
+```{r}
+# Finding the player.id associated with Sam Kerr (forward)
+englandID <- chelseaAttackData |>
+  filter(player.name == "Bethany England") |>
+  pull(player.id)
+
+# Creating the visualization
+englandPass <- chelseaAttackData |>
+  filter(type.name == "Pass" & is.na(pass.outcome.name) & player.id == englandID) |>
+  filter(pass.end_location.x >= 102 & pass.end_location.y <= 62 & pass.end_location.y >= 18)
+
+
+create_Pitch(grass_colour = "#538032", 
+             line_colour =  "#ffffff", 
+             background_colour = "#538032", 
+             goal_colour = "#000000") + 
+  geom_segment(data = englandPass, aes(x = location.x, y = location.y,
+                                    xend = pass.end_location.x, yend = pass.end_location.y), 
+               lineend = "round", size = 0.5, color = "#ffffff", 
+               arrow = arrow(length = unit(0.07, "inches"), ends = "last", type = "open")) +
+  labs(title = "Bethany England, Completed Box Passes", subtitle = "WSL, 2019-20") + 
+  scale_y_reverse() + 
+  coord_fixed(ratio = 105/100)
+```
+
+This visualization displays the routes for Beth England's passes. As seen on the left side of the goal, Beth England is comfortable with passing the ball backwards at an angle from the endline in order to give her teammates a better angle to the goal. She also tends to dish the ball out to teammates around the penalty area, giving them an clear view of the goal. 
+
+## So-Yun Ji's attacking passes into the box 
+
+Boiler plate code produced by StatsBomb
+
+```{r}
+# Finding the player.id associated with Sam Kerr (forward)
+jiID <- chelseaAttackData |>
+  filter(player.name == "So-Yun Ji") |>
+  pull(player.id)
+
+# Creating the visualization
+jiPass <- chelseaAttackData |>
+  filter(type.name == "Pass" & is.na(pass.outcome.name) & player.id == jiID) |>
+  filter(pass.end_location.x >= 102 & pass.end_location.y <= 62 & pass.end_location.y >= 18)
+
+
+create_Pitch(grass_colour = "#538032", 
+             line_colour =  "#ffffff", 
+             background_colour = "#538032", 
+             goal_colour = "#000000") + 
+  geom_segment(data = jiPass, aes(x = location.x, y = location.y,
+                                    xend = pass.end_location.x, yend = pass.end_location.y), 
+               lineend = "round", size = 0.5, color = "#ffffff", 
+               arrow = arrow(length = unit(0.07, "inches"), ends = "last", type = "open")) +
+  labs(title = "So-Yun Ji, Completed Box Passes", subtitle = "WSL, 2019-20") + 
+  scale_y_reverse() + 
+  coord_fixed(ratio = 105/100)
+```
+
+## Guro Reiten's attacking passes into the box 
+
+Boiler plate code produced by StatsBomb
+
+```{r}
+# Finding the player.id associated with Sam Kerr (forward)
+reitenID <- chelseaAttackData |>
+  filter(player.name == "Guro Reiten") |>
+  pull(player.id)
+
+# Creating the visualization
+reitenPass <- chelseaAttackData |>
+  filter(type.name == "Pass" & is.na(pass.outcome.name) & player.id == reitenID) |>
+  filter(pass.end_location.x >= 102 & pass.end_location.y <= 62 & pass.end_location.y >= 18)
+
+
+create_Pitch(grass_colour = "#538032", 
+             line_colour =  "#ffffff", 
+             background_colour = "#538032", 
+             goal_colour = "#000000") + 
+  geom_segment(data = reitenPass, aes(x = location.x, y = location.y,
+                                    xend = pass.end_location.x, yend = pass.end_location.y), 
+               lineend = "round", size = 0.5, color = "#ffffff", 
+               arrow = arrow(length = unit(0.07, "inches"), ends = "last", type = "open")) +
+  labs(title = "Guro Reiten, Completed Box Passes", subtitle = "WSL, 2019-20") + 
+  scale_y_reverse() + 
+  coord_fixed(ratio = 105/100)
+``` 
+
+
+## Heatmap of defensive positioning for each team
+
+Boiler plate code produced by StatsBomb
+
+```{r}
+# Get rid of values outside of the pitch dimensions 
+heatmap <- statsBombData |>
+  mutate(location.x = ifelse(location.x > 120, 120, location.x), 
+         location.y = ifelse(location.y > 80, 80, location.y),
+         location.x = ifelse(location.x < 0, 0, location.x),
+         location.y = ifelse(location.y < 0, 0, location.y)) 
+
+# Create the buckets needed to plot the zones
+heatmap$xbin <- cut(heatmap$location.x, breaks = seq(from = 0, to = 120, by = 20), include.lowest = TRUE) 
+heatmap$ybin <- cut(heatmap$location.y, breaks = seq(from = 0, to = 80, by = 20), include.lowest = TRUE) 
+
+# 
+heatmap <- heatmap |>
+  filter(type.name == "Pressure" | duel.type.name == "Tackle" | type.name == "Foul Committed" |
+           type.name == "Interception" | type.name == "Block" ) |>
+  group_by(team.name) |>
+  mutate(total_DA = n()) |>
+  group_by(team.name, xbin, ybin) |>
+  summarise(total_DA = max(total_DA),
+            bin_DA = n(),
+            bin_pct = bin_DA/total_DA,
+            location.x = median(location.x),
+            location.y = median(location.y)) |>
+  group_by(xbin, ybin) |>
+  mutate(league_ave = mean(bin_pct)) |>
+  group_by(team.name, xbin, ybin) |>
+  mutate(diff_vs_ave = bin_pct - league_ave) 
+
+defensiveactivitycolors <- c("#dc2429", "#dc2329", "#df272d", "#df3238", "#e14348", "#e44d51", "#e35256", "#e76266", "#e9777b", "#ec8589",
+                             "#ec898d", "#ef9195","#ef9ea1", "#f0a6a9", "#f2abae", "#f4b9bc", "#f8d1d2", "#f9e0e2","#f7e1e3", "#f5e2e4",
+                             "#d4d5d8", "#d1d3d8", "#cdd2d6", "#c8cdd3", "#c0c7cd","#b9c0c8", "#b5bcc3", "#909ba5", "#8f9aa5", "#818c98",
+                             "#798590", "#697785", "#526173", "#435367", "#3a4b60", "#2e4257", "#1d3048", "#11263e", "#11273e", "#0d233a","#020c16") 
+ggplot(data = heatmap, aes(x = location.x, y = location.y, fill = diff_vs_ave, group =diff_vs_ave)) +
+  geom_bin2d(binwidth = c(20, 20), position = "identity", alpha = 0.9) +
+  annotate("rect",xmin = 0, xmax = 120, ymin = 0, ymax = 80, fill = NA, color = "black", size = 0.6) + 
+  annotate("rect",xmin = 0, xmax = 60, ymin = 0, ymax = 80, fill = NA, color = "black", size = 0.6) + 
+  annotate("rect",xmin = 18, xmax = 0, ymin = 18, ymax = 62, fill = NA, color = "white", size = 0.6) + 
+  annotate("rect",xmin = 102, xmax = 120, ymin = 18, ymax = 62, fill = NA, color = "white", size = 0.6) + 
+  annotate("rect",xmin = 0, xmax = 6, ymin = 30, ymax = 50, fill = NA, color = "white", size = 0.6) + 
+  annotate("rect",xmin = 120, xmax = 114, ymin = 30, ymax = 50, fill = NA, color = "white", size = 0.6) + 
+  annotate("rect",xmin = 120, xmax = 120.5, ymin =36, ymax = 44, fill = NA, color = "black", size = 0.6) + 
+  annotate("rect",xmin = 0, xmax = -0.5, ymin =36, ymax = 44, fill = NA, color = "black", size = 0.6) + 
+  annotate("segment", x = 60, xend = 60, y = -0.5, yend = 80.5, color = "white", size = 0.6) + 
+  annotate("segment", x = 0, xend = 0, y = 0, yend = 80, color = "black", size = 0.6) + 
+  annotate("segment", x = 120, xend = 120, y = 0, yend = 80, color = "black", size = 0.6) +
+  theme(rect = element_blank(), line = element_blank()) +
+  annotate("point", x = 12 , y = 40, color = "white", size = 1.05) + 
+  annotate("point", x = 108 , y = 40, color = "white", size = 1.05) +
+  annotate("path", color = "white", size = 0.6, x=60+10*cos(seq(0,2*pi,length.out=2000)), y=40+10*sin(seq(0,2*pi,length.out=2000)))+
+  annotate("point", x = 60 , y = 40, color = "white", size = 1.05) + 
+  annotate("path", x=12+10*cos(seq(-0.3*pi,0.3*pi,length.out=30)), size = 0.6, y=40+10*sin(seq(-0.3*pi,0.3*pi,length.out=30)), col="white") + 
+  annotate("path", x=108-10*cos(seq(-0.3*pi,0.3*pi,length.out=30)), size = 0.6, y=40-10*sin(seq(-0.3*pi,0.3*pi,length.out=30)), col="white") +
+  theme(axis.text.x=element_blank(), axis.title.x = element_blank(),axis.title.y = element_blank(),
+        plot.caption=element_text(size=8,family="Arial", hjust=0.5, vjust=0.5), 
+        plot.subtitle = element_text(size = 8, family="Arial", hjust = 0.5), 
+        axis.text.y=element_blank(), legend.title = element_blank(), legend.text=element_text(size=8,family="Arial"), 
+        legend.key.size = unit(1.5, "cm"), 
+        axis.ticks=element_blank(), plot.background = element_rect(fill = "white"), 
+        strip.text.x = element_text(size=8,family="Arial")) +
+  scale_y_reverse() + 
+  scale_fill_gradientn(colours = defensiveactivitycolors, trans = "reverse", labels = scales::percent_format(accuracy = 1), 
+                       limits = c(0.03, -0.03)) +
+  labs(title = "Where Do Teams Defend vs League Average?", subtitle = "FA Women's Super League, 2019/20") + 
+  coord_fixed(ratio = 95/100) + 
+  annotation_custom(grob = linesGrob(arrow=arrow(type="open", ends="last", length=unit(2.55,"mm")), 
+                                     gp=gpar(col="black", fill=NA, lwd=2.2)),
+                    xmin=25, xmax = 95, ymin = -83, ymax = -83) + 
+  facet_wrap(~team.name) + 
+  guides(fill = guide_legend(reverse = TRUE))
+
+```
+
+The darker red zones indicate a higher concentration of defensive actions compared to the league average in those areas. For top teir teams like Chelsea and Arsenal, their defensive half has less defensive actions while their attacking half has a greater concentration of defensive actions when compared to the league average. This indicates that these teams attempt to win the ball back on their opponents defensive half. They are high pressure teams and tend to not let the opponent enter their defensive half frequently; thus, these zones have less defensive actions than the league average. 
+
+## Chelsea Expected Goals [xG] by Position Group 
+
+```{r}
+# Separate data for shots only 
+chelseaShotsData <- chelseaAttackData |>
+  filter(type.name == "Shot" & team.name == "Chelsea FCW")
+```
+
+```{r}
+# Binary operator for goals vs no goal 
+chelseaShotsData$shot_res <- 0
+chelseaShotsData$shot_res[chelseaShotsData$shot.outcome.name == "Goal"] <- 1
+```
+
+```{r}
+# Look at different shot outcomes 
+summary(as.factor(chelseaShotsData$shot.outcome.name))
+
+# Look at different shot types 
+summary(as.factor(chelseaShotsData$shot.type.name))
+
+# Look at what period shots are taken 
+summary(as.factor(chelseaShotsData$period))
+```
+
+```{r}
+table(chelseaShotsData$shot.type.name, chelseaShotsData$period)
+```
+
+```{r}
+create_Pitch(grass_colour = "#538032", 
+             line_colour =  "#ffffff", 
+             background_colour = "#538032", 
+             goal_colour = "#000000") + 
+  geom_point(data = chelseaShotsData, aes(x = location.x , # Set x-axis as x coordinate
+                 y = location.y,  # Set y-axis as y coordinate
+                 color = factor(shot_res)), # Set color as shot result
+                 alpha = 0.3,
+             size = 3) + # Set point size
+   scale_color_manual(values = c("1" = "blue", "0" = "red"), # Scale colors manually
+                     labels = c("1" = "Goal", "0" = "Miss")) +  # Set color labels
+  guides(alpha = FALSE) + # Turn off alpha legend 
+  labs(color = "Shot Result:", title = "Chelsea FCW Shots", subtitle = "WSL, 2019-20") + 
+  scale_y_reverse() + 
+  coord_fixed(ratio = 105/100)
+```
+
+```{r}
+# Create x and y grid vectors
+x_vals <- c(55,60,65,70,75, 80,85, 90, 95, 100, 105, 110, 115)
+y_vals <- c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65)
+# Use expand.grid to create data frame with each combination of different values
+grid_vals <- expand.grid(x_vals, y_vals)
+# Change names for grid
+names(grid_vals) <- c("xmin", "ymin")
+# Create maximum grid value columns
+grid_vals$xmax <- grid_vals$xmin + 5
+grid_vals$ymax <- grid_vals$ymin + 5
+# View first five rows of grid
+head(grid_vals)
+```
+
+```{r}
+# Create empty vectors to store shots and goals
+shots <- goals <- rep(NA, # Repeat NA 
+                      times = nrow(grid_vals)) # The number of rows there are in grid values
+# for each row of the grid values
+for(i in 1:nrow(grid_vals)){
+  # Calculate number of shots taken inside each grid box
+  shots[i] <- sum(chelseaShotsData$location.y >= grid_vals$ymin[i] & # y greater than or equal to minimum y
+                 chelseaShotsData$location.y < grid_vals$ymax[i] & # y less than maximum y
+                 chelseaShotsData$location.x >= grid_vals$xmin[i] & # x greater than or equal to minimum y
+                 chelseaShotsData$location.x < grid_vals$xmax[i]) # x less than maximum y
+  # Calculate number of goals scored inside each grid box
+ goals[i] <- sum(chelseaShotsData$location.y >= grid_vals$ymin[i] & # y greater than or equal to minimum y
+                 chelseaShotsData$location.y < grid_vals$ymax[i] & # y less than maximum y
+                 chelseaShotsData$location.x >= grid_vals$xmin[i] & # x greater than or equal to minimum y
+                 chelseaShotsData$location.x < grid_vals$xmax[i] & # x less than maximum y
+                 chelseaShotsData$shot_res == 1) # Shot result equal to 1
+}
+```
+
+```{r}
+# Calculate rate of scoring from each grid box
+rate <- goals/shots
+# Add columns to data frame
+grid_vals$shots <- shots
+grid_vals$goals <- goals
+grid_vals$rate <- rate
+# Select only grid sections where at least one shot is attempted.
+grid_vals_use <- grid_vals[grid_vals$shots >= 1,]
+# Print out grid values
+grid_vals_use
+```
+
+```{r}
+create_Pitch(grass_colour = "#538032", 
+             line_colour =  "#ffffff", 
+             background_colour = "#538032", 
+             goal_colour = "#000000") + 
+  geom_rect(data = grid_vals_use, aes(xmin = xmin,  # Set minimum x value
+                xmax = xmax ,  # Set maximum x value
+                ymin =  ymin, # Set minimum y value
+                ymax = ymax,  # Set maximum y value
+                fill = rate), # Set fill of each rectangle
+              alpha = 0.9) + # Set transperancy
+  scale_fill_gradient(low = "blue", high = "red") + # Scale fill gradien
+  labs(fill = "Scoring Rate:", title = "Chelsea FCW Scoring Rate by Pitch Area", subtitle = "WSL, 2019-20") + 
+  scale_y_reverse() + 
+  coord_fixed(ratio = 105/100)
+```
+
+```{r}
+# Extract unique players from dataset
+players <- unique(chelseaShotsData$player.name)
+# Create empty vectors to store values
+shots <- goals <- xg_vals <- rep(NA, length(players))
+# For each player
+for(i in 1:length(players)){
+  # Sum up number of shots the player had
+  shots[i] <- sum(chelseaShotsData$player.name == players[i])
+  # Sum up number of goals the player scored
+  goals[i] <- sum(chelseaShotsData$player.name == players[i] &
+                    chelseaShotsData$shot_res == 1)
+  # Sum up XG for the players shots
+  xg_vals[i] <- sum(chelseaShotsData$shot.statsbomb_xg[chelseaShotsData$player.name == players[i]])
+}
+# Calculate difference in players expected vs actual goals
+xg_goal_diff <- xg_vals - goals
+# Join results together
+player_xg_db <- cbind.data.frame(players, shots, goals, xg_vals, xg_goal_diff)
+```
+
+```{r}
+# Show top of dataframe
+head(player_xg_db[order(player_xg_db$goals, decreasing = TRUE),], # Order rows by goals scored
+     n=10) # Set n as 10 to show top 10 players
+```
+
+Lets view the players who out performed in terms of expected goals. We can do this by ordering the data using the difference between actual and expected goals.
+
+```{r}
+# View top of data frame
+head(player_xg_db[order(player_xg_db$xg_goal_diff),], # Order by expected and actual goal difference
+     n=22) # Set n as 10 to show 10 rows
+```
+
+And players who under performed, here we set decreasing as TRUE to show highest values first:
+
+```{r}
+# View top of data frame
+head(player_xg_db[order(player_xg_db$xg_goal_diff, # Order by actual v expected goal difference
+                        decreasing = TRUE),], # Decreasing values so highest values first
+     n=10) # Set n as 10 to show top 10 rows
+```
+
+## Shot Context -- 5 rows/events before a shot
+
+```{r}
+# Function to get 5 rows before and including "Shot"
+shotContext <- function(data) {
+  filtered_data <- data |> 
+    filter(team.name == "Chelsea FCW") # Filter for Chelsea FCW events
+  
+  if (nrow(filtered_data) == 0) {
+    warning("No data found for Chelsea FCW.")
+    return(data.frame()) # Return an empty data frame
+  }
+  
+  shot_rows <- filtered_data |> 
+    mutate(row_number = row_number()) |> # Add a row number
+    filter(type.name == "Shot") |>       # Identify rows with "Shot"
+    pull(row_number)                     # Extract their row numbers
+  
+  if (length(shot_rows) == 0) {
+    warning("No 'Shot' events found for Chelsea FCW.")
+    return(data.frame()) # Return an empty data frame
+  }
+  
+  # Get rows within the 5 rows before each "Shot"
+  row_indices <- shot_rows |> 
+    map(~seq(max(. - 5, 1), .)) |>       # Generate sequences for each "Shot"
+    unlist() |>                          # Flatten the list into a single vector
+    unique() |>                          # Remove duplicate row indices
+    sort()                               # Sort the row indices
+  
+  # Subset the original data using the calculated row indices
+  filtered_data[row_indices, ]
+}
+
+beforeShots <- shotContext(chelseaAttackData)
+
+print(beforeShots)
+```
+
+## Gini Index by Position -- Do Chelsea players tend to carry(turn, move, etc) or pass under pressure? 
+
+### For under pressure
+
+```{r}
+# Create function that collects the action frequency dependfing on action type  
+actionFreqUnderPressure <- function(data, player_name, action_type) {
+  actionFreq <- 0
+  
+  for (i in 1:nrow(data)) {
+    # Check if the conditions are met (ignoring missing values with isTRUE())
+    if (isTRUE(data$player.name[i] == player_name) && 
+        isTRUE(data$under_pressure[i] == TRUE) && 
+        isTRUE(data$type.name[i] == action_type)) {
+      actionFreq <- actionFreq + 1
+    }
+  }
+  return(actionFreq)
+}
+```
+
+```{r}
+# Calculate pass frequency under pressure for each player
+passResult1 <- sapply(chelseaNames, function(player) {
+  actionFreqUnderPressure(chelseaAttackData, player, "Pass")
+})
+
+# Calculate carry frequency under pressure for each player
+carryResult1 <- sapply(chelseaNames, function(player) {
+  actionFreqUnderPressure(chelseaAttackData, player, "Carry")
+})
+
+freqResult1 <- data.frame(
+  player = chelseaNames,
+  passFrequencyPressure = passResult1,
+  carryFrequencyPressure = carryResult1
+)
+
+print(freqResult1)
+```
+
+```{r}
+# Group players by position (defender, midfielder, forward)
+unique(chelseaAttackData$position.name)
+
+defensePos <- c("Left Center Back", "Left Back", "Right Back", "Right Center Back", "Right Wing Back", "Center Back", "Left Wing Back")
+midfieldPos <- c("Right Center Midfield", "Left Midfield", "Right Midfield", "Left Center Midfield", 
+                 "Center Defensive Midfield", "Left Wing", "Right Wing", "Center Attacking Midfield", 
+                 "Left Defensive Midfield", "Right Defensive Midfield")
+forwardPos <- c("Left Center Forward", "Right Center Forward", "Center Forward")
+
+```
+
+```{r}
+# Join frequencies with position data and classify by position category
+freqResult1 <- merge(freqResult1, unique(chelseaAttackData[, c("player.name", "position.name")]), by.x = "player", 
+                     by.y = "player.name", all.x = TRUE)
+
+# Add a new column for position category
+freqResult1$positionCategory <- ifelse(freqResult1$position.name %in% defensePos, "Defender",
+                               ifelse(freqResult1$position.name %in% midfieldPos, "Midfielder",
+                               ifelse(freqResult1$position.name %in% forwardPos, "Forward", NA)))
+
+# Exclude goalkeepers from the frequency results
+freqResult1 <- freqResult1[freqResult1$position.name != "Goalkeeper", ]
+```
+
+```{r}
+# Remove duplicate rows based on player name and position
+freqResult1 <- freqResult1 |>
+  distinct(player, positionCategory, .keep_all = TRUE)
+
+print(freqResult1)
+```
+
+```{r}
+# Count frequency of each player-position combination, and select the max for each player
+positionFrequency <- chelseaAttackData |>
+  filter(team.name == "Chelsea FCW") |>    
+  group_by(player.name, position.name) |>
+  summarise(position_count = n(), .groups = 'drop') |>
+  group_by(player.name) |>
+  slice_max(position_count, n = 1) |>      # Keep only the row with the highest count for each player
+  ungroup()
+
+print(positionFrequency)
+```
+
+```{r}
+positionFrequency$positionCategory <- ifelse(positionFrequency$position.name %in% defensePos, "Defender",
+                                      ifelse(positionFrequency$position.name %in% midfieldPos, "Midfielder",
+                                      ifelse(positionFrequency$position.name %in% forwardPos, "Forward", NA)))
+
+# Exclude goalkeepers
+positionFrequency <- positionFrequency[positionFrequency$position.name != "Goalkeeper", ]
+
+# Merge freqResult1 with positionFrequency
+freqResult1 <- merge(freqResult1, 
+                     positionFrequency[, c("player.name", "positionCategory")], 
+                     by.x = "player", by.y = "player.name", all.x = TRUE)
+
+# Check if columns exist before filtering or renaming
+if ("positionCategory.x" %in% colnames(freqResult1) && "positionCategory.y" %in% colnames(freqResult1)) {
+    # Filter rows where positionCategory.x is equal to positionCategory.y
+    freqResult1 <- freqResult1[freqResult1$positionCategory.x == freqResult1$positionCategory.y, ]
+
+    # Remove unnecessary columns and rename properly
+    freqResult1 <- freqResult1 |>
+        select(-positionCategory.x) |>
+        rename(positionCategory = positionCategory.y)
+}
+
+print(freqResult1)
+```
+
+### For not under pressure
+
+```{r}
+# Create function that collects the action frequency dependfing on action type
+actionFreqNotUnderPressure <- function(data, player_name, action_type) {
+  actionFreq <- 0
+  
+  for (i in 1:nrow(data)) {
+    # Check if the conditions are met
+    if (isTRUE(data$player.name[i] == player_name) &&
+        is.na(data$under_pressure[i]) &&
+        isTRUE(data$type.name[i] == action_type)) {
+      actionFreq <- actionFreq + 1
+    }
+  }
+  return(actionFreq)
+}
+```
+
+```{r}
+# Calculate pass frequency under pressure for each player
+passResult2 <- sapply(chelseaNames, function(player) {
+  actionFreqNotUnderPressure(chelseaAttackData, player, "Pass")
+})
+
+# Calculate carry frequency under pressure for each player
+carryResult2 <- sapply(chelseaNames, function(player) {
+  actionFreqNotUnderPressure(chelseaAttackData, player, "Carry")
+})
+
+freqResult2 <- data.frame(
+  player = chelseaNames,
+  passFrequencyNoPressure = passResult2,
+  carryFrequencyNoPressure = carryResult2
+)
+
+print(freqResult2)
+```
+
+```{r}
+# Merge freqResult1 and freqResult2 by the 'player' column
+mergedResults <- merge(freqResult1, freqResult2, by = "player")
+
+mergedResults <- mergedResults |>
+  select(-position.name)
+
+print(mergedResults)
+```
+
+
+### Adding under pressure and not under pressure to same data frame
+
+```{r}
+# Calculate Gini indices for each position group
+giniResults <- mergedResults |>
+  group_by(positionCategory) |>
+  summarise(
+    gini_passPressure = Gini(passFrequencyPressure),
+    gini_carryPressure = Gini(carryFrequencyPressure),
+    gini_passNoPressure = Gini(passFrequencyNoPressure),
+    gini_carryNoPressure = Gini(carryFrequencyNoPressure)
+  )
+
+print(giniResults)
+```
+```{r}
+# Reshape data for ggplot2
+giniMelt <- melt(giniResults, id.vars = "positionCategory",
+                 variable.name = "ActionContext", value.name = "GiniIndex")
+
+# Separate Action and Pressure Context
+giniMelt$Action <- ifelse(grepl("pass", giniMelt$ActionContext), "Pass", "Carry")
+giniMelt$Pressure <- ifelse(grepl("UnderPressure", giniMelt$ActionContext), "Under Pressure", "No Pressure")
+```
+
+```{r}
+ggplot(giniMelt, aes(x = Pressure, y = Action)) +
+  geom_tile(aes(fill = GiniIndex)) +
+  facet_wrap(~ positionCategory) +
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red",
+    midpoint = median(giniMelt$GiniIndex, na.rm = TRUE)
+  ) +
+  labs(
+    title = "Chelsea Gini Index for Actions Under/No Pressure by Positional Group",
+    x = "Pressure Context",
+    y = "Action Type",
+    fill = "Gini Index"
+  ) +
+  theme_minimal()
+```
+
+## Rest of League Gini Index by Position Group 
+
+### Finding team names in data set
+
+```{r}
+unique(statsBombData$team.name)
+```
+
+### Creating new dataset 
+
+```{r}
+otherData <- statsBombData |>
+  filter(team.name != "Chelsea FCW") 
+
+otherNames <- unique(statsBombData$player.name)
+otherNames <- na.omit(otherNames)
+```
+
+```{r}
+# Calculate pass frequency under pressure for each player
+passResult5 <- sapply(otherNames, function(player) {
+  actionFreqUnderPressure(otherData, player, "Pass")
+})
+
+# Calculate carry frequency under pressure for each player
+carryResult5 <- sapply(otherNames, function(player) {
+  actionFreqUnderPressure(otherData, player, "Carry")
+})
+
+freqResult5 <- data.frame(
+  player = otherNames,
+  passFrequencyPressure = passResult5,
+  carryFrequencyPressure = carryResult5
+)
+
+head(freqResult5)
+```
+
+```{r}
+# Group players by position (defender, midfielder, forward)
+unique(otherData$position.name)
+
+defensePos <- c("Left Center Back", "Left Back", "Right Back", "Right Center Back", "Right Wing Back", "Center Back", "Left Wing Back")
+midfieldPos <- c("Right Center Midfield", "Left Midfield", "Right Midfield", "Left Center Midfield", 
+                 "Center Defensive Midfield", "Left Wing", "Right Wing", "Center Attacking Midfield", 
+                 "Left Defensive Midfield", "Right Defensive Midfield", "Right Attacking Midfield", "Left Attacking Midfield")
+forwardPos <- c("Left Center Forward", "Right Center Forward", "Center Forward")
+
+```
+
+```{r}
+# Join frequencies with position data and classify by position category
+freqResult5 <- merge(freqResult5, unique(otherData[, c("player.name", "position.name")]), by.x = "player", 
+                     by.y = "player.name", all.x = TRUE)
+
+# Add a new column for position category
+freqResult5$positionCategory <- ifelse(freqResult5$position.name %in% defensePos, "Defender",
+                               ifelse(freqResult5$position.name %in% midfieldPos, "Midfielder",
+                               ifelse(freqResult5$position.name %in% forwardPos, "Forward", NA)))
+
+# Exclude goalkeepers and substitutes from the frequency results
+freqResult5 <- freqResult5[freqResult5$position.name != "Goalkeeper" & freqResult5$position.name != "Substitute", ]
+```
+
+```{r}
+# Remove duplicate rows based on player name and position
+freqResult5 <- freqResult5 |>
+  distinct(player, positionCategory, .keep_all = TRUE)
+
+print(freqResult5)
+```
+
+```{r}
+# Count frequency of each player-position combination, and select the max for each player
+positionFrequency2 <- otherData |>
+  group_by(player.name, position.name) |>
+  summarise(position_count = n(), .groups = 'drop') |>
+  group_by(player.name) |>
+  slice_max(position_count, n = 1) |>      # Keep only the row with the highest count for each player
+  ungroup()
+
+print(positionFrequency2)
+```
+
+```{r}
+positionFrequency2$positionCategory <- ifelse(positionFrequency2$position.name %in% defensePos, "Defender",
+                                      ifelse(positionFrequency2$position.name %in% midfieldPos, "Midfielder",
+                                      ifelse(positionFrequency2$position.name %in% forwardPos, "Forward", NA)))
+
+# Exclude goalkeepers
+positionFrequency2 <- positionFrequency2[positionFrequency2$position.name != "Goalkeeper", ]
+
+# Merge freqResult1 with positionFrequency
+freqResult5 <- merge(freqResult5, 
+                     positionFrequency2[, c("player.name", "positionCategory")], 
+                     by.x = "player", by.y = "player.name", all.x = TRUE)
+
+# Check if columns exist before filtering or renaming
+if ("positionCategory.x" %in% colnames(freqResult5) && "positionCategory.y" %in% colnames(freqResult5)) {
+    # Filter rows where positionCategory.x is equal to positionCategory.y
+    freqResult5 <- freqResult5[freqResult5$positionCategory.x == freqResult5$positionCategory.y, ]
+
+    # Remove unnecessary columns and rename properly
+    freqResult5 <- freqResult5 |>
+        select(-positionCategory.x) |>
+        rename(positionCategory = positionCategory.y)
+}
+
+print(freqResult5)
+```
+
+```{r}
+# Calculate pass frequency under pressure for each player
+passResult6 <- sapply(otherNames, function(player) {
+  actionFreqNotUnderPressure(otherData, player, "Pass")
+})
+
+# Calculate carry frequency under pressure for each player
+carryResult6 <- sapply(otherNames, function(player) {
+  actionFreqNotUnderPressure(otherData, player, "Carry")
+})
+
+freqResult6 <- data.frame(
+  player = otherNames,
+  passFrequencyNoPressure = passResult6,
+  carryFrequencyNoPressure = carryResult6
+)
+
+head(freqResult6)
+```
+
+```{r}
+# Merge freqResult1 and freqResult2 by the 'player' column
+mergedResults2 <- merge(freqResult5, freqResult6, by = "player")
+
+mergedResults2 <- mergedResults2 |>
+  select(-position.name)
+
+print(mergedResults2)
+```
+
+```{r}
+# Calculate Gini indices for each position group
+giniResults3 <- mergedResults2 |>
+  group_by(positionCategory) |>
+  summarise(
+    gini_passPressure = Gini(passFrequencyPressure),
+    gini_carryPressure = Gini(carryFrequencyPressure),
+    gini_passNoPressure = Gini(passFrequencyNoPressure),
+    gini_carryNoPressure = Gini(carryFrequencyNoPressure)
+  )
+
+print(giniResults3)
+```
+
+```{r}
+# Reshape data for ggplot2
+giniMelt3 <- melt(giniResults3, id.vars = "positionCategory",
+                 variable.name = "ActionContext", value.name = "GiniIndex")
+
+# Separate Action and Pressure Context
+giniMelt3$Action <- ifelse(grepl("pass", giniMelt$ActionContext), "Pass", "Carry")
+giniMelt3$Pressure <- ifelse(grepl("UnderPressure", giniMelt$ActionContext), "Under Pressure", "No Pressure")
+```
+
+```{r}
+ggplot(giniMelt3, aes(x = Pressure, y = Action)) +
+  geom_tile(aes(fill = GiniIndex)) +
+  facet_wrap(~ positionCategory) +
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red",
+    midpoint = median(giniMelt$GiniIndex, na.rm = TRUE)
+  ) +
+  labs(
+    title = "League Average Gini Index for Actions Under/No Pressure by Positional Group",
+    x = "Pressure Context",
+    y = "Action Type",
+    fill = "Gini Index"
+  ) +
+  theme_minimal()
+```
+
+## Gini Expansion by Player 
+
+```{r}
+combineActionFrequencies <- function(data, action_types) {
+  results <- list()
+
+  # Loop through each action type
+  for (action_type in action_types) {
+    # Calculate frequencies for under pressure
+    underPressure <- data |>
+      filter(under_pressure == TRUE, type.name == action_type) |>
+      group_by(match_id, player.name) |>
+      summarise(
+        !!paste0(action_type, "FrequencyUnderPressure") := n(),
+        .groups = "drop"
+      )
+    
+    # Calculate frequencies for not under pressure
+    notUnderPressure <- data |>
+      filter(is.na(data$under_pressure), type.name == action_type) |>
+      group_by(match_id, player.name) |>
+      summarise(
+        !!paste0(action_type, "FrequencyNotUnderPressure") := n(),
+        .groups = "drop"
+      )
+    
+    # Merge under pressure and not under pressure results
+    combined <- full_join(underPressure, notUnderPressure, by = c("match_id", "player.name"))
+    
+    # Append to results list
+    results[[action_type]] <- combined
+  }
+  
+  # Merge results for all action types into a single data frame
+  finalResult <- reduce(results, full_join, by = c("match_id", "player.name"))
+  
+  # Replace NAs with 0 (optional)
+  finalResult[is.na(finalResult)] <- 0
+  
+  return(finalResult)
+}
+```
+
+```{r}
+actionTypes <- c("Pass", "Carry")
+combinedPlayerResults <- combineActionFrequencies(chelseaPlayerData, actionTypes)
+print(combinedPlayerResults)
+```
+
+```{r}
+# Create function for calculating Gini index 
+calculateGiniIndices <- function(data, player_col, pass_pressure_col, carry_pressure_col, pass_no_pressure_col, carry_no_pressure_col) {
+  gini_results <- data |>
+    group_by({{player_col}}) |>
+    summarise(
+      gini_passPressure = Gini({{pass_pressure_col}}),
+      gini_carryPressure = Gini({{carry_pressure_col}}),
+      gini_passNoPressure = Gini({{pass_no_pressure_col}}),
+      gini_carryNoPressure = Gini({{carry_no_pressure_col}})
+    )
+  return(gini_results)
+}
+```
+
+```{r}
+giniResults2 <- calculateGiniIndices(data = combinedPlayerResults, 
+                     player_col = player.name,
+                     pass_pressure_col = PassFrequencyUnderPressure,
+                     carry_pressure_col = CarryFrequencyUnderPressure,
+                     pass_no_pressure_col = PassFrequencyNotUnderPressure,
+                     carry_no_pressure_col = CarryFrequencyNotUnderPressure)
+
+print(giniResults2)
+```
+
+```{r}
+# Reshape data
+giniMelt2 <- melt(giniResults2, id.vars = "player.name", variable.name = "ActionContext", value.name = "GiniIndex")
+
+# Correctly label the Pressure context based on the ActionContext
+giniMelt2$Action <- ifelse(grepl("pass", giniMelt2$ActionContext), "Pass", "Carry")
+giniMelt2$Pressure <- ifelse(grepl("Pressure", giniMelt2$ActionContext), "Under Pressure", "No Pressure")
+giniMelt2$Pressure <- ifelse(grepl("NoPressure", giniMelt2$ActionContext), "No Pressure", "Under Pressure")
+```
+
+
+```{r}
+ggplot(giniMelt2, aes(x = Pressure, y = Action)) +
+  geom_tile(aes(fill = GiniIndex)) +
+  facet_wrap(~ player.name, ncol = 4) + # Increase columns for less overlap
+  scale_fill_gradient2(
+    low = "blue", mid = "white", high = "red",
+    midpoint = median(giniMelt2$GiniIndex, na.rm = TRUE)
+  ) +
+  labs(
+    title = "Gini Index for Actions Under/No Pressure by Player",
+    x = "Pressure Context",
+    y = "Action Type",
+    fill = "Gini Index"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 6), # Rotate x-axis for clarity
+    strip.text = element_text(size = 5), # Adjust facet text size
+    axis.text.y = element_text(size = 6)
+  ) + 
+  scale_x_discrete(
+    limits = c("Under Pressure", "No Pressure")) 
+
+```
+
+
+
